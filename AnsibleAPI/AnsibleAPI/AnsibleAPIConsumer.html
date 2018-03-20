@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Testing FrontEnd</title>
+    <meta charset="utf-8" />
+    <link href="Content/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div class="col-xs-6">
+        <h2>Get Actions</h2>
+        <div>
+            <h3>Get All Entities</h3>
+            <ul id="entities" />
+        </div>
+        <br />
+        <input type="button" id="refresh" value="Refresh" />
+        <div>
+            <h3>Get Entity By Id</h3>
+            <div class="form-group">
+                <label>Entity Id</label>
+                <input type="number" id="entityId" />
+            </div>
+            <input type="button" id="entity" value="Get Entity" />
+        </div>
+    </div>
+    <div class="col-xs-6">
+        <h2>Post Actions</h2>
+        <form id="frmAddEntity">
+            <h3>Post Single Entity</h3>
+            <div class="form-group">
+                <label>Entity Name</label>
+                <input type="text" id="entityName" />
+            </div>
+            <input type="submit" value="Save Entity" />
+        </form>
+
+        <form id="frmAddEntities">
+            <h3>Post List Of Entities</h3>
+            <div class="form-group">
+                <label>Entity Name 1</label>
+                <input type="text" id="entityListName1" />
+            </div>
+            <div class="form-group">
+                <label>Entity Name 2</label>
+                <input type="text" id="entityListName2" />
+            </div>
+            <div class="form-group">
+                <label>Entity Name 3</label>
+                <input type="text" id="entityListName3" />
+            </div>
+            <input type="submit" value="Save Entities" />
+        </form>
+    </div>
+    <div id="dialogPostMessage">
+        <p />
+    </div>
+
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.11.1/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.css" />
+    <script>
+        var uri = 'api/v1/entities';
+        var currentUrl = window.location.href;
+        var urlSplit = currentUrl.split('/');
+
+        window.open(urlSplit[0] + '//' + urlSplit[2] + '/swagger')
+        $(document).ready(function () {
+            refresh();
+        });
+
+        function formatEntity(item) {
+            return item.Id + ': ' + item.Name
+        }
+
+        $("#refresh").click(function (e) {
+            e.preventDefault();
+            refresh();
+        });
+
+        function refresh() {
+            $.getJSON(uri)
+                .done(function (data) {
+                    var items = [];
+                    $.each(data.$values, function (k, item) {
+                        items.push($('<li>', { text: formatEntity(item) }));
+                    });
+                    $("#entities").html(items);
+                });
+        }
+
+        $("#dialogPostMessage").dialog({
+            autoOpen: false, modal: true
+        });
+
+        $("#entity").click(function (e) {
+            e.preventDefault();
+            var id = $("#entityId").val();
+            if (id) {
+                $.getJSON(uri + '/' + id)
+                    .done(function (item) {
+                        $("#dialogPostMessage p").text(formatEntity(item));
+                        $("#dialogPostMessage").dialog('open');
+                    })
+                    .fail(function (_, _, err) {
+                        $("#dialogPostMessage p").text('Error: ' + err);
+                        $("#dialogPostMessage").dialog('open');
+                    });
+            }
+        })
+
+        $("#frmAddEntity").submit(function (e) {
+            e.preventDefault();
+            var postedData = {
+                Name: $("#entityName").val().trim()
+            }
+            $.ajax({
+                url: 'api/v1/entity',
+                type: 'POST',
+                dataType: 'json',
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(postedData),
+                success: function (entityId) {
+                    $("#dialogPostMessage p").text('Successfully added entity with Id: ' + entityId);
+                    $("#dialogPostMessage").dialog('open');
+                },
+                error: function (error) {
+                    $("#dialogPostMessage p").text('Error: ' + error.responseJSON.Message);
+                    $("#dialogPostMessage").dialog('open');
+                }
+            })
+        });
+
+        $("#frmAddEntities").submit(function (e) {
+            e.preventDefault();
+            var postedData = [{
+                Name: $("#entityListName1").val().trim()
+            }, {
+                Name: $("#entityListName2").val().trim()
+            }, {
+                Name: $("#entityListName3").val().trim()
+            }];
+            $.ajax({
+                url: uri,
+                type: 'POST',
+                dataType: 'json',
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify(postedData),
+                success: function (data) {
+                    var result = '';
+                    $.each(data.$values, function (k, entityId) {
+                        result += entityId + ', ';
+                    });
+                    result = result.replace(/(^, )|(, $)/g, "")
+                    $("#dialogPostMessage p").text('Successfully added entities with Ids: ' + result);
+                    $("#dialogPostMessage").dialog('open');
+                },
+                error: function (error) {
+                    $("#dialogPostMessage p").text('Error: ' + error.responseJSON.Message);
+                    $("#dialogPostMessage").dialog('open');
+                }
+            })
+        })
+    </script>
+</body>
+</html>
